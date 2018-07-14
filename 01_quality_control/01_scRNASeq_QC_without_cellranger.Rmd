@@ -1,0 +1,241 @@
+```{r echo=FALSE}
+
+##NOTE: The file 'metrics_summary.csv' is not mandatory in this script.
+
+# Read the arguments from command line
+##argv <- commandArgs(TRUE)
+sample <- argv[1]
+reference <- argv[2]
+indir <- argv[3]
+outdir <- argv[4]
+```
+
+```{r setup, include=FALSE}
+library(Seurat)
+library(dplyr)
+library(Matrix)
+library(ggplot2)
+library(condformat)
+library(knitr)
+library(kableExtra)
+```
+
+```{r echo = FALSE}
+## Input: Read the 10X scRNA-Seq data
+data <- Read10X(data.dir = indir)
+
+## Output: Set the directory
+knitr::opts_knit$set(root.dir = outdir)
+```
+
+## Sample information
+
+```{r echo=FALSE}
+# Count the genes identified in >=1 cell(s)
+cells_per_gene <- data.frame(ncells=rowSums(sign(as.matrix(data))))
+preqc_genes <- sum(cells_per_gene$ncells > 0)
+
+# Count the cells with >=1 identified gene(s)
+genes_per_cell <- data.frame(ngenes=colSums(sign(as.matrix(data))))
+preqc_cells <- sum(genes_per_cell$ngenes > 0)
+
+sample_info_c1 <- c("Sample ID", "Reference", "Input Directory", "Output Directory", "Raw Genes", "Raw Cells")
+sample_info_c2 <- c(sample, reference, indir, outdir, preqc_genes, preqc_cells)
+sample_info <- matrix(c(sample_info_c1, sample_info_c2), ncol = 2, byrow = F)
+sample_info %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(1, bold = T) %>% column_spec(2, color = "red", bold = T)
+```
+
+## 1 Quality control on genes
+### 1.1 Evaluate the quality of genes
+```{r echo = FALSE}
+# Visulize the distribution of cell counts of each gene
+nCell_detected <- data.frame(ncells=rowSums(sign(as.matrix(data))))
+ggplot(data=nCell_detected, aes(log10(nCell_detected$ncells+1))) + geom_histogram(bins = 100) + labs(x = "LOG10 (Cell counts + 1)", y = "Gene counts", title = "Distribution of Cell Counts among Genes") + theme(axis.text = element_text(size = 10), axis.title = element_text(size = 12, face = "bold"), title = element_text(size = 14, face = "bold"))
+ggsave(filename = "1_1_distribution_of_cell_counts_among_genes.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
+```
+
+### 1.2 Remove the low-quality genes
+```{r echo = FALSE}
+percent.nCell_cutoff <- 0.01 ## Genes expressed in less cells than this percentage will be removed. Manually adjust it accordingly.
+nCell_cutoff <- floor(percent.nCell_cutoff * preqc_cells)
+nCell_total <- preqc_genes; nCell_clean <- sum(nCell_detected >= nCell_cutoff); nCell_remove <- (nCell_total - nCell_clean);
+per.nCell_remove <- paste((round((nCell_remove / nCell_total * 100), 2)), "%")
+per.nCell_clean <- paste((round((nCell_clean / nCell_total * 100), 2)), "%")
+gene_table_c1 <- c(nCell_total, nCell_remove, nCell_clean)
+gene_table_c2 <- c("100%", per.nCell_remove, per.nCell_clean)
+gene_table <- matrix(c(gene_table_c1, gene_table_c2), ncol = 2, byrow = F)
+rownames(gene_table) <- c("Gene Total", "Gene Removed", "Gene Remained")
+colnames(gene_table) <- c("Number", "Percent")
+gene_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(2:3, bold = T, color = "Red") %>% add_footnote(paste0("Genes expressed in less than ", (100*percent.nCell_cutoff), "% (", nCell_cutoff, ") cells were removed."),  notation = "number")
+```
+
+## 2 Quality control on cells
+
+```{r echo = FALSE}
+# Setup the Seurat Object
+Obj <- CreateSeuratObject(raw.data = data, min.cells = nCell_cutoff, min.genes = 1, project = sample)
+```
+
+### 2.1 Evaluate the qulity of cells
+```{r echo = FALSE}
+# Count mitochondrial genes
+mito.genes <- grep(pattern = "mt-|MT-", x = rownames(x = Obj@raw.data), value = TRUE)
+percent.mito <- Matrix::colSums(Obj@raw.data[mito.genes, ]) / Matrix::colSums(Obj@raw.data); percent.mito[is.na(percent.mito)] <- 1 ## NAs may cause errors in Mito-related visulization and filtration.
+Obj <- AddMetaData(object = Obj, metadata = percent.mito, col.name = "percent.Mito")
+
+# Visulize the distribution of Identified Genes, UMIs and %Mitochondrial genes among cells
+VlnPlot(object = Obj, features.plot = c("nGene", "nUMI", "percent.Mito"), nCol = 3, point.size.use = 0, size.x.use = 0, size.title.use = 14) + ggtitle("Distribution of Identified Genes, UMIs and % Mitochondrial Genes among Cells")
+ggsave(filename = "2_1_distribution_of_identified_genes_UMIs_percentMito_among_cells.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
+
+ggplot(data = Obj@meta.data, aes(nGene)) + geom_histogram(bins = 100) + labs(x = "# Identified Genes in Each Cell", y = "Cell Counts", title = "Distribution of Identified Genes among Cells") + theme(axis.text = element_text(size = 10), axis.title = element_text(size = 12, face = "bold"), title = element_text(size = 14, face = "bold"))
+ggsave(filename = "2_2_distribution_of_identified_genes_among_cells.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
+
+ggplot(data = Obj@meta.data, aes(nUMI)) + geom_histogram(bins = 100)  + labs(x = "# Identified UMIs in Each Cell", y = "Cell Counts", title = "Distribution of Identified UMIs among Cells") + theme(axis.text = element_text(size = 10), axis.title = element_text(size = 12, face = "bold"), title = element_text(size = 14, face = "bold"))
+ggsave(filename = "2_3_distribution_of_identified_UMIs_among_cells.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
+
+ggplot(data = Obj@meta.data, aes(percent.mito)) + geom_histogram(bins = 100) + labs(x = "% Mitochondrial Genes in Each Cell", y = "Cell Counts", title = "Distribution of % Mitochondrial Genes among Cells") + theme(axis.text = element_text(size = 10), axis.title = element_text(size = 12, face = "bold"), title = element_text(size = 14, face = "bold"))
+ggsave(filename = "2_4_distribution_of_percentMito_among_cells.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
+
+par(mfrow = c(1, 2))
+GenePlot(object = Obj, gene1 = "nUMI", gene2 = "nGene", cex.use = 0.5)
+GenePlot(object = Obj, gene1 = "nUMI", gene2 = "percent.Mito", cex.use = 0.5)
+hide_info <- dev.copy2pdf(file = "2_5_correlation_gene_percentMito_vs_UMI.pdf", width = 10, height = 10)
+hide_info <- dev.off()
+```
+
+### 2.2 Evaluate the default cutoffs
+#### 2.2.1 Cells removed by poor gene identification
+```{r echo = FALSE}
+nGene_detected <- Obj@meta.data$nGene; nGene_total <- length(nGene_detected);
+nGene_cutoff <- floor(exp(median(log(nGene_detected)) - 3 * mad(log(nGene_detected)))); nGene_clean <- sum(nGene_detected > nGene_cutoff)
+nGene_remove = (nGene_total - nGene_clean)
+per.nGene_remove = paste((round((nGene_remove / nGene_total * 100), 2)), "%")
+per.nGene_clean = paste((round((nGene_clean / nGene_total * 100), 2)), "%")
+nGene_table_c1 <- c(nGene_total, nGene_remove, nGene_clean)
+nGene_table_c2 <- c("100%", per.nGene_remove, per.nGene_clean)
+nGene_table <- matrix(c(nGene_table_c1, nGene_table_c2), ncol = 2, byrow = F)
+rownames(nGene_table) <- c("Cell Total", "Cell Removed", "Cell Remained")
+colnames(nGene_table) <- c("Number", "Percent")
+nGene_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(2:3, bold = T, color = "Red") %>% add_footnote(paste0("Cells with less than ", (nGene_cutoff), " (", "Defined by MEDIAN - 3*MAD", ") identified genes were removed."),  notation = "number")
+```
+
+#### 2.2.2 Cells removed by poor UMI identification
+```{r echo=FALSE}
+nUMI_detected <- Obj@meta.data$nUMI; nUMI_total <- length(nUMI_detected);
+nUMI_cutoff <- floor(exp(median(log(nUMI_detected)) - 3 * mad(log(nUMI_detected)))); nUMI_clean <- sum(nUMI_detected > nUMI_cutoff);
+nUMI_remove = (nUMI_total - nUMI_clean)
+per.nUMI_remove = paste((round((nUMI_remove / nUMI_total * 100), 2)), "%")
+per.nUMI_clean = paste((round((nUMI_clean / nUMI_total * 100), 2)), "%")
+nUMI_table_c1 <- c(nUMI_total, nUMI_remove, nUMI_clean)
+nUMI_table_c2 <- c("100%", per.nUMI_remove, per.nUMI_clean)
+nUMI_table <- matrix(c(nUMI_table_c1, nUMI_table_c2), ncol = 2, byrow = F)
+rownames(nUMI_table) <- c("Cell Total", "Cell Removed", "Cell Remained")
+colnames(nUMI_table) <- c("Number", "Percent")
+nUMI_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(2:3, bold = T, color = "Red") %>% add_footnote(paste0("Cells with less than ", (nUMI_cutoff), " (", "Defined by MEDIAN - 3*MAD", ") identified UMIs were removed."),  notation = "number")
+```
+
+#### 2.2.3 Cells removed by high mitochondrial genes
+```{r echo=FALSE}
+percent.mito_detected <- Obj@meta.data$percent.Mito; percent.mito_total <- length(percent.mito_detected);
+percent.mito_cutoff <- round((median(percent.mito_detected) + 3 * mad(percent.mito_detected)), 4); percent.mito_clean <- sum(percent.mito_detected < percent.mito_cutoff);
+percent.mito_remove = (percent.mito_total - percent.mito_clean)
+per.percent.mito_remove = paste((round((percent.mito_remove / percent.mito_total * 100), 2)), "%")
+per.percent.mito_clean = paste((round((percent.mito_clean / percent.mito_total * 100), 2)), "%")
+percent.mito_table_c1 <- c(percent.mito_total, percent.mito_remove, percent.mito_clean)
+percent.mito_table_c2 <- c("100%", per.percent.mito_remove, per.percent.mito_clean)
+percent.mito_table <- matrix(c(percent.mito_table_c1, percent.mito_table_c2), ncol = 2, byrow = F)
+rownames(percent.mito_table) <- c("Cell Total", "Cell Removed", "Cell Remained")
+colnames(percent.mito_table) <- c("Number", "Percent")
+percent.mito_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(2:3, bold = T, color = "Red") %>% add_footnote(paste0("Cells with over than ", (percent.mito_cutoff), " (", "Defined by MEDIAN + 3*MAD", ") mitochondrial genes were removed."),  notation = "number")
+```
+
+### 2.3 Remove the low-quality cells
+```{r echo = FALSE}
+manual_cutoffs <- 0 ## "0" for default method, and "1" for manual cutoffs.
+cutoffs_low <- c(nGene_cutoff, nUMI_cutoff, 0); cutoffs_high <- c(Inf, Inf, percent.mito_cutoff); ## Manually adjust them accordingly.
+cutoffs_low[1] <- max(nGene_cutoff, 50); cutoffs_low[2] <- max(nUMI_cutoff, 100); cutoffs_high[3] <- min(percent.mito_cutoff, 0.8);
+Obj <- FilterCells(object = Obj, subset.names = c("nGene", "nUMI", "percent.Mito"), low.thresholds = cutoffs_low, high.thresholds = cutoffs_high)
+
+para_table_r1 <- c(nCell_cutoff, cutoffs_low[1], cutoffs_low[2], paste0((cutoffs_low[3] * 100), "%"))
+para_table_r2 <- c(Inf, cutoffs_high[1], cutoffs_high[2], paste0((cutoffs_high[3] * 100), "%"))
+para_table <- matrix(c(para_table_r1, para_table_r2), ncol = 4, byrow = T)
+colnames(para_table) <- c("# Cells per Gene", "# Identified Genes", "# Identified UMIs", "% Mitochondrial Genes")
+rownames(para_table) <- c("Low Thresholds", "High Thresholds")
+para_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(1, bold = T)
+
+result_table <- matrix(c(dim(Obj@data)[1], dim(Obj@data)[2]), ncol = 2, byrow = T)
+colnames(result_table) <- c("Qualified Genes", "Qualified Cells")
+result_table %>% kable("html", align = "c") %>% kable_styling(bootstrap_options = "striped", font_size = 20) %>% row_spec(1, bold = T, color = "red", background = "lightgreen")
+
+summary_table_r1 = c(round(summary(Obj@meta.data$nGene)[4], 0), summary(Obj@meta.data$nGene)[1], summary(Obj@meta.data$nGene)[2], summary(Obj@meta.data$nGene)[3], summary(Obj@meta.data$nGene)[5], summary(Obj@meta.data$nGene)[6])
+summary_table_r2 = c(round(summary(Obj@meta.data$nUMI)[4], 0), summary(Obj@meta.data$nUMI)[1], summary(Obj@meta.data$nUMI)[2], summary(Obj@meta.data$nUMI)[3], summary(Obj@meta.data$nUMI)[5], summary(Obj@meta.data$nUMI)[6])
+summary_table <- matrix(c(summary_table_r1,summary_table_r2), ncol = 6, byrow = T)
+colnames(summary_table) <- c("Mean", "Min.", "1stQu.", "Median", "3rdQu.", "Max.")
+rownames(summary_table) <- c("Identified Genes", "Identified UMIs")
+summary_table %>% kable("html", align = "c") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% row_spec(1:2, bold = T, color = "red")
+
+postqc_genes <- dim(Obj@data)[1]; postqc_cells <- dim(Obj@data)[2];
+genes_per_cell_median <- (summary(Obj@meta.data$nGene))[3]; genes_per_cell_mean <- floor((summary(Obj@meta.data$nGene))[4]);
+umis_per_cell_median <- (summary(Obj@meta.data$nUMI))[3]; umis_per_cell_mean <- floor((summary(Obj@meta.data$nUMI))[4]);
+```
+
+## 3 Summary
+### 3.1 Key Features
+```{r echo=FALSE}
+key_c1 <- c("Qualified Cells", "Qualified Genes", "Median Genes per Cell", "Mean UMIs per Cell")
+key_c2 <- c(postqc_cells, postqc_genes, genes_per_cell_median, umis_per_cell_mean)
+key_table <- matrix(c(key_c1, key_c2), ncol = 2, byrow = F)
+t(key_table) %>% kable("html", align = "c") %>% kable_styling(bootstrap_options = "striped", font_size = 20) %>% column_spec(1:4, bold = T) %>% row_spec(2, color = "red", background = "lightgreen")
+```
+
+### 3.2 Sample Information
+```{r echo=FALSE}
+sample_c1 <- c("Name", "Reference", "Chemistry", "Cell Ranger Version", "Input Directory", "Output Directory")
+sample_c2 <- c(sample, reference, "Single Cell 3' v2", "2.0.1", indir, outdir)
+sample_table <- matrix(c(sample_c1, sample_c2), ncol = 2, byrow = F)
+sample_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14)
+```
+
+### 3.3 Quality Control Report
+```{r echo=FALSE,warning=FALSE}
+qc_c1 <- c("Pre-QC Genes", "Post-QC Genes", "Pre-QC Cells", "Post-QC Cells", "% Post-QC Cells","Median of Post-QC Genes per Cell", "Mean of Post-QC Genes per Cell", "Median of Post-QC UMIs per Cell", "Mean of Post-QC UMIs per Cell")
+percent_cells <- paste0(round((postqc_cells / preqc_cells * 100), 2), "%")
+qc_c2 <- c(preqc_genes, postqc_genes, preqc_cells, postqc_cells, percent_cells, genes_per_cell_median, genes_per_cell_mean, umis_per_cell_median, umis_per_cell_mean)
+qc_table <- matrix(c(qc_c1, qc_c2), ncol = 2, byrow = F)
+qc_table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% row_spec(c(2,4,5,6,9), bold = T, color = "Red")
+```
+
+```{r echo=FALSE}
+
+# Write the summary tables into csv file
+summary_table <- rbind(sample_table, qc_table)
+summary_table <- t(summary_table)
+summary_table_name <- paste0(outdir, "/3_1_", sample, "_", reference, "_report.csv")
+write.table(summary_table, file = summary_table_name, sep = ",", col.names = F, row.names = F, quote = F)
+
+# Write the Meta.data of Seurat Object with nGene/nUMI/p.Mito/ident of each cell
+meta_table <- Obj@meta.data
+meta_table$cell_id <- row.names(meta_table)
+meta_table_out <- meta_table[, c(5,3,1,2,4)]
+meta_table_out_file <- paste0(outdir, "/3_2_", sample, "_", reference, "_metadata.txt")
+write.table(meta_table_out, file = meta_table_out_file, quote = F, row.names = F, col.names = T, sep = "\t")
+
+
+# Write the clean count table for subseqent analysis
+cleancounts_table <- as.matrix(Obj@data)
+newline_c_clean <- colnames(cleancounts_table); newline_r_clean <- rownames(cleancounts_table);
+cleancounts_table <- rbind(newline_c_clean, cleancounts_table); row.names(cleancounts_table) <- c("GeneSymbol", newline_r_clean)
+cleancounts_table_file = paste0(outdir, "/3_3_", sample, "_", reference, "_counts_clean.txt")
+write.table(cleancounts_table, file = cleancounts_table_file, sep = "\t", col.names = F, row.names = T, quote = F)
+
+# Write the raw count table for subseqent analysis
+##rawcounts_table <- as.matrix(data)
+##newline_c_raw <- colnames(rawcounts_table); newline_r_raw <- rownames(rawcounts_table);
+##rawcounts_table <- rbind(newline_c_raw, rawcounts_table); row.names(rawcounts_table) <- c("GeneSymbol", newline_r_raw);
+##rawcounts_table_file = paste0(outdir, "/3_4_", sample, "_", reference, "_counts_raw.txt")
+##write.table(rawcounts_table, file = rawcounts_table_file, sep = "\t", col.names = F, row.names = T, quote = F)
+
+# Save the working space
+obj_name <- paste0(outdir, "/", sample, "_", reference, "_qc.Rdata")
+save(Obj, file = obj_name)
+```
