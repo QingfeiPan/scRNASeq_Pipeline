@@ -3,10 +3,11 @@
 use strict;
 use warnings;
 
-##NOTE: This script is used to combine the scRNA-Seq cells by 10X Genomics. The input and output of this script are both standard output of Cell Ranger, and can be directly used for downstream analysis.
+## NOTE: This script is used to combine the scRNA-Seq cells by 10X Genomics. The input and output of this script are both standard output of Cell Ranger, and can be directly used for downstream analysis.
 
-
-my @samples = qw/Breast_10_nsTumor Breast_30_nsTumor Breast_10_sTumor Breast_30_sTumor Breast_10_sLymph Breast_30_sLymph Lung_10_nsLung Lung_30_nsLung Lung_10_sLymph Lung_30_sLymph Spleen_10_sSpleen Spleen_30_sSpleen/; ## List of samples for combination.
+## Input 1: List of samples for combination.
+my @samples = qw/Breast_10_nsTumor Breast_30_nsTumor Breast_10_sTumor Breast_30_sTumor Breast_10_sLymph Breast_30_sLymph Lung_10_nsLung Lung_30_nsLung Lung_10_sLymph Lung_30_sLymph Spleen_10_sSpleen Spleen_30_sSpleen/;
+## Input 2: Corresponding directories of samples listed above.
 my @dirs = (
     "/research/dept/cmpb/genomicsLab/runs/180309_K00202_0213_AHT5LKBBXX/E_Tumor_2/outs/filtered_gene_bc_matrices/mm10",
     "/research/dept/cmpb/genomicsLab/runs/180309_K00202_0213_AHT5LKBBXX/C_Tumor_1/outs/filtered_gene_bc_matrices/mm10",
@@ -20,16 +21,16 @@ my @dirs = (
     "/research/dept/cmpb/genomicsLab/runs/180309_K00202_0213_AHT5LKBBXX/H_Lung_1_LN/outs/filtered_gene_bc_matrices/mm10",
     "/research/dept/cmpb/genomicsLab/runs/180309_K00202_0214_BHT3LLBBXX/J_Spleen_2/outs/filtered_gene_bc_matrices/mm10",
     "/research/dept/cmpb/genomicsLab/runs/180309_K00202_0213_AHT5LKBBXX/G_Spleen_1/outs/filtered_gene_bc_matrices/mm10"
-); ## Corresponding directories of samples listed above.
-
+);
+## Input 3: The Output Directory to save the combined files.
 my $outdir = "/research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/01_quality_control/00_cell_combination/Combined_Total";
 mkdir $outdir unless (-e $outdir);
 
-## Prepare the Gene list file
-`cp $dirs[0]/genes.tsv $outdir/genes.tsv`; ## This file varies only by species.
+## Output 1: Prepare the Gene list file
+`cp $dirs[0]/genes.tsv $outdir/genes.tsv`; ## This file varies by species only.
 
-## Prepare the Barcode and Matrix files
-
+## Output 2: Prepare the Barcode file
+## Output 3: Prepare the Matrix file
 open (OUT1, "> $outdir/barcodes.tsv") or die;
 open (OUT2, "> $outdir/matrix.mtx") or die;
 print OUT2 "%%MatrixMarket matrix coordinate integer general\n%\n"; ## The header of matrix.mtx file. It's always the same.
@@ -67,5 +68,5 @@ for(my$i=0;$i<@samples;$i++) {
 }
 
 my $lines = join("\n", @total);
-print OUT2 "27998\t$cell_num\t$umi_num\n$lines\n"; ## 27998 is the gene number of genes.tsv of mouse.
+print OUT2 "27998\t$cell_num\t$umi_num\n$lines\n"; ## Check the genes.tsv for the number. Generally, 27998 for mouse and 32738 for human.
 close OUT1; close OUT2;
