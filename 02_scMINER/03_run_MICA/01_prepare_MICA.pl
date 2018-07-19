@@ -16,7 +16,7 @@ while (<IN>) {
     next if ($_ =~ /^Sample/);
     next if ($_ =~ /^##/);
     my @F = split(/\s+/, $_);
-    my $memory = ($F[3] * 10);
+    my $memory = ($F[3] * 5);
 
     open (OUT, "> ./$F[0]_$F[1]_MICA.sh") or die;
     print OUT "#BSUB -P $project\n#BSUB -M $memory\n#BSUB -oo $F[0]_$F[1]_MICA.out -eo $F[0]_$F[1]_MICA.err\n#BSUB -J $F[0]_$F[1]\n#BSUB -q $queue\n\n";
