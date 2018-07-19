@@ -1,0 +1,124 @@
+```{r echo=FALSE}
+## Read the arguments
+#argv <- commandArgs(TRUE)
+sample <- argv[1]
+reference <- argv[2]
+indir <- argv[3]
+outdir <- argv[4]
+```
+
+```{r setup, include=FALSE}
+library(Seurat)
+library(dplyr)
+library(Matrix)
+library(ggplot2)
+library(condformat)
+library(knitr)
+library(kableExtra)
+```
+
+```{r echo = FALSE}
+## Input: Load the Quality Control Dataset
+file <- paste0(indir,"/",sample,"_",reference,"_qc.Rdata")
+load(file) ## The Seurat Object saved after QC has all information required.
+
+## Output: Set the directory
+knitr::opts_knit$set(root.dir = outdir)
+```
+
+## Sample information
+
+```{r echo=FALSE}
+sample_info_c1 <- c("Sample ID", "Reference", "Input Directory", "Output Directory")
+sample_info_c2 <- c(sample, reference, indir, outdir)
+sample_info <- matrix(c(sample_info_c1, sample_info_c2), ncol = 2, byrow = F)
+sample_info %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(1, bold = T) %>% column_spec(2, color = "red", bold = T)
+```
+
+## 1 Normalize the primary data
+
+```{r echo=F,comment=""}
+qualified_gene_table <- Obj@data; qualified_gene_table <- as.matrix(qualified_gene_table); ## Make sure that the filtered data was save in Obj@data, not Obj@raw.data.
+qualified_gene <- (dim(qualified_gene_table))[1]; qualified_cell <- (dim(qualified_gene_table))[2];
+
+## Scale the total counts to 100,000 and then log-transform
+cat("Two steps were introduced to normalize the primary data:","\n\t","1) Scale the total counts of genes involved in each cell into 100,000;", "\n\t", "2) e-based log transformation of (nUMI + 1).")
+Obj <- NormalizeData(object = Obj, normalization.method = "LogNormalize", scale.factor = 100000)
+ggplot(data = data.frame(sE = colSums(as.matrix(Obj@data))), aes(sE)) + geom_histogram(bins = 100) + labs(x = "Normalized Total Counts of Genes in Each Cell", y = "Cell Counts", title = "Distribution of Total Gene Expressions among Cells") + theme(axis.text = element_text(size = 10), axis.title = element_text(size = 12, face = "bold"), title = element_text(size = 14, face = "bold"))
+ggsave(filename = "1_1_distribution_of_total_gene_expression_among_cells.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
+```
+
+## 2 Define the variable genes
+
+```{r echo=F,comment=""}
+cat("Variable genes refer to those with significant variation among different cells, and hence are the key factors upon how the cells will be clustered. Because of the smaller gene counts than total genes, variable genes can provide a much faster and highly comparable cluster pattern of cells.")
+Obj <- FindVariableGenes(object = Obj, mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, x.high.cutoff = 5, y.cutoff = 0.5) ## Variable genes were called by Z-score, and can be used for a quick clustering analysis.
+hide <- dev.copy2pdf(file = "2_1_Dotplot_of_variable_genes_by_Seurat.pdf", width = 5, height = 5)
+cat(length(Obj@var.genes), "variable genes were detected by Seurat.")
+
+## M3Drop method for variable gene calling
+data_log <- as.matrix(Obj@data); data <- exp(data_log) - 1;
+get_M3Drop_HVG <- function(data) {
+  Brennecke_HVG <- M3Drop::BrenneckeGetVariableGenes(
+  data, fdr = 0.01, minBiolDisp = 0.5
+  )
+  return(Brennecke_HVG);
+}
+
+Brennecke_HVG <- get_M3Drop_HVG(data)
+hide <- dev.copy2pdf(file = "2_2_Breneckeplot_of_variable_genes_by_Brennecks.pdf", width = 5, height = 5)
+hide <- dev.off()
+cat(length(Brennecke_HVG), "variable genes were detected by Brennecks.")
+```
+
+## 3 Remove unwanted sources of variation
+
+```{r echo=F}
+Obj <- ScaleData(object = Obj, vars.to.regress = c("nUMI", "percent.Mito")) ## Regress out of uninteresting variables to improve the dimentionality reduction and clustering.
+```
+
+## 4 Write the MICA input files
+```{r echo=F}
+## Generate the MICA input file of all genes
+all_gene_table <- as.matrix(Obj@data); all_gene <- (dim(all_gene_table))[1]; all_cell <- (dim(all_gene_table))[2];
+##newline_c_all <- colnames(all_gene_table); newline_r_all <- rownames(all_gene_table);
+##all_gene_table <- rbind(newline_c_all, all_gene_table); row.names(all_gene_table) <- c("GeneSymbol", newline_r_all);
+all_gene_filename <- paste(outdir, "/3_1_", sample, "_", reference, "_scMINER_total.txt", sep = "");
+write.table(t(all_gene_table), file = all_gene_filename, sep = "\t", col.names = T, row.names = T, quote = FALSE)
+
+## Generate the MICA input file of variable genes
+var_gene_table <- all_gene_table[Brennecke_HVG, ]; variable_gene <- (dim(var_gene_table))[1]; variable_cell <- (dim(var_gene_table))[2];
+##newline_c_var <- colnames(var_gene_table); newline_r_var <- rownames(var_gene_table);
+##var_gene_table <- rbind(newline_c_var, var_gene_table); row.names(var_gene_table) <- c("GeneSymbol", newline_r_var);
+var_gene_filename <- paste(outdir, "/3_2_", sample, "_", reference, "_scMINER_variable.txt", sep = "");
+write.table(t(var_gene_table), file = var_gene_filename, sep = "\t", col.names = T, row.names = T, quote = FALSE)
+
+## Summarize the directories of MICA input files
+table_c1 <- c("Total Genes", "Variable Genes")
+table_c2 <- c(all_gene_filename, var_gene_filename)
+table <- matrix(table_c2, ncol = 1)
+rownames(table) <- table_c1
+colnames(table) <- "scMINER Input File"
+table %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(1, bold = T) %>% column_spec(2, color = "red", bold = T)
+
+## Save the object
+r_filename <- paste(outdir, "/", sample, "_", reference, "_scMINER_input.Rdata", sep = "");
+save(Obj, file = r_filename)
+```
+
+## 5 Summary
+```{r echo=FALSE}
+summary_c1 <- c("Qualified","scMINER Input (Total)", "scMINER Input (Variable)")
+summary_c2 <- c(qualified_gene, all_gene, variable_gene)
+summary_c3 <- c(qualified_cell, all_cell, variable_cell)
+summary <- matrix(c(summary_c2, summary_c3), ncol = 2, byrow = F)
+rownames(summary) <- summary_c1
+colnames(summary) <- c("Genes","Cells")
+summary %>% kable("html") %>% kable_styling(bootstrap_options = "striped", font_size = 14) %>% column_spec(1, bold = T) %>% column_spec(2:3, color = "red", bold = T)
+
+output_c1 <- c("Sample ID", "Reference", "Input Directory", "Output Directory", "Qualified Genes by QC", "Qualified Cells by QC", "scMINER Input Genes (Total)", "scMINER Input Cells (Total)", "scMINER Input Genes (Variable)", "scMINER Input Cells (Variable)" )
+output_c2 <- c(sample, reference, indir, outdir, qualified_gene, qualified_cell, all_gene, all_cell, variable_gene, variable_cell)
+output <- matrix(c(output_c1, output_c2), ncol = 2, byrow = F); output <- t(output)
+output_name <- paste0(outdir,"/3_3_",sample,"_",reference,"_MICA_report.csv")
+write.table(output, file = output_name, sep = ",", col.names = F, row.names = F, quote = F)
+```
