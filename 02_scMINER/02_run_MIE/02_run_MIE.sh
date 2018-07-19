@@ -1,0 +1,15 @@
+##bsub < ./Breast_10_sLymphm_m10_MIE.sh
+##bsub < ./Breast_10_sTumor_mm10_MIE.sh
+##bsub < ./Breast_10_nsTumor_mm10_MIE.sh
+##bsub < ./Breast_30_sLymph_mm10_MIE.sh
+##bsub < ./Breast_30_sTumor_mm10_MIE.sh
+##bsub < ./Breast_30_nsTumor_mm10_MIE.sh
+##bsub < ./Lung_10_sLymph_mm10_MIE.sh
+##bsub < ./Lung_10_nsLung_mm10_MIE.sh
+##bsub < ./Lung_30_sLymph_mm10_MIE.sh
+##bsub < ./Lung_30_nsLung_mm10_MIE.sh
+##bsub < ./Spleen_10_sSpleen_mm10_MIE.sh
+##bsub < ./Spleen_30_sSpleen_mm10_MIE.sh
+##bsub < ./Combined_Total_mm10_MIE.sh
+bsub < ./Combined_Tumor_mm10_MIE.sh
+bsub < ./Combined_Immune_mm10_MIE.sh
