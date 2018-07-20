@@ -19,7 +19,7 @@ while (<IN>) {
     my $memory = ($F[3] * 5);
 
     open (OUT, "> ./$F[0]_$F[1]_MICA.sh") or die;
-    print OUT "#BSUB -P $project\n#BSUB -M $memory\n#BSUB -oo $F[0]_$F[1]_MICA.out -eo $F[0]_$F[1]_MICA.err\n#BSUB -J $F[0]_$F[1]\n#BSUB -q $queue\n\n";
+    print OUT "#BSUB -P $project\n#BSUB -M $memory\n#BSUB -oo $F[0]_$F[1]_MICA.out -eo $F[0]_$F[1]_MICA.err\n#BSUB -J $F[0]_$F[1]_MICA\n#BSUB -q $queue\n\n";
 
     print OUT "python3=/hpcf/apps/python/install/3.6.1/bin/python3.6\n";
     print OUT "scMINER=/research/projects/yu3grp/scRNASeq/yu3grp/qpan/Software/scMINER/scMINER-20180523/scMINER.py\n\n";
