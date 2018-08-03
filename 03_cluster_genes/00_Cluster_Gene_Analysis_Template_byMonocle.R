@@ -29,6 +29,7 @@ for (i in 1:K) {
 }
 names(compare) <- c("Foreground","Background")
 
+## DE analysis for multi-comparison of different conditions
 output_merge <- data.frame(GeneSymbol = row.names(d), row.names = row.names(d))
 for (i in 1:nrow(compare)) {
   cat("Comparison", i, ':', as.character(compare[i, 1]), 'VS', as.character(compare[i, 2]), '\n')
