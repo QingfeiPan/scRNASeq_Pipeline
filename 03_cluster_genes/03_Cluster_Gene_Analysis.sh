@@ -1,0 +1,22 @@
+#BSUB -P Metastasis
+#BSUB -n 1
+#BSUB -M 64000
+#BSUB -oo 03_Cluster_Gene_Analysis.out -eo 03_Cluster_Gene_Analysis.err
+#BSUB -J Monocle_DEGs
+#BSUB -q priority
+
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Breast_10_nsTumor/Breast_10_nsTumor_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Breast_30_nsTumor/Breast_30_nsTumor_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Breast_10_sTumor/Breast_10_sTumor_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Breast_30_sTumor/Breast_30_sTumor_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Breast_10_sLymph/Breast_10_sLymph_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Breast_30_sLymph/Breast_30_sLymph_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Lung_10_nsLung/Lung_10_nsLung_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Lung_30_nsLung/Lung_30_nsLung_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Lung_10_sLymph/Lung_10_sLymph_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Lung_30_sLymph/Lung_30_sLymph_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Spleen_10_sSpleen/Spleen_10_sSpleen_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Spleen_30_sSpleen/Spleen_30_sSpleen_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Combined_Total/Combined_Total_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Combined_Tumor/Combined_Tumor_mm10_Cluster_Gene.R
+Rscript /research/projects/yu3grp/scRNASeq/yu3grp/metastasis/02_Breast_cancer/03_cluster_genes/01_cluster_vs_rest/Combined_Immune/Combined_Immune_mm10_Cluster_Gene.R
