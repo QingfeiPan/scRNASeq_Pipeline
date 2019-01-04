@@ -7,13 +7,16 @@ use File::Path qw(make_path);
 #
 # mergeDatasets_10X.pl - Script to merge the scRNASeq datasets by 10X Genomics.
 #
-# Version: 1.0 (Jan. 2, 2019)
 # Author: Qingfei Pan (Qingfei.Pan<@>hotmail.com), SJCRH, USA
+# Version: 2.0 (Jan. 2, 2019)
+# This version works fine with the samples of different gene list;
+# A master table of genes-by-cells will be generated;
+# A statistics report will be generated. 
 #
 # Permission is granted to anyone to use this software for any purpose, without
 # any express or implied warranty. In no event will the authors be held liable
 # for any damages arising from the use of this software.
-#
+# 
 
 ## Get options
 my ($help, $input);
