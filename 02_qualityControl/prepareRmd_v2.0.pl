@@ -1,10 +1,16 @@
 #!/usr/bin/perl
 
+# prepareRmd.pl - To prepare .Rmd script for each sample listed in qualityControl_cellRanger_v2.0.txt
+#
+# Author: Qingfei Pan (Qingfei.Pan<@>hotmail.com), SJCRH, USA
+# Version: 2.0 (Jan. 2, 2019)
+# 
+
 use strict;
 use warnings;
 
-open (SH, "> ./03_run_QC.sh") or die;
-open (IN, "./01_sample_list.txt") or die;
+open (SH, "> ./qualityControl_runRmd.sh") or die;
+open (IN, "./qualityControl_cellRanger_v2.0.txt") or die;
 while (<IN>) {
     chomp;
     next unless ($_ =~ /^\w+/);
@@ -15,7 +21,7 @@ while (<IN>) {
 
     if ($F[0] =~ /^Combined/) {
         open (OUT, "> $F[3]/$F[0]_$F[1]_report.Rmd") or die;
-        open (REF, "/Volumes/yu3grp/scRNASeq/yu3grp/qpan/Software/scRNAseq/01_scRNASeq_QC_without_cellranger.Rmd") or die;
+        open (REF, "/Volumes/yu3grp/scRNASeq/yu3grp/qpan/Software/scRNAseq/qualityControl_cellRanger_v2.0_withoutReport.Rmd") or die;
         while (<REF>) {
             chomp;
             $_ =~ s/argv\[1\]/\"$F[0]\"/;
@@ -29,7 +35,7 @@ while (<IN>) {
     }
     else {
         open (OUT, "> $F[3]/$F[0]_$F[1]_report.Rmd") or die;
-        open (REF, "/Volumes/yu3grp/scRNASeq/yu3grp/qpan/Software/scRNAseq/01_scRNASeq_QC_with_cellranger.Rmd") or die;
+        open (REF, "/Volumes/yu3grp/scRNASeq/yu3grp/qpan/Software/scRNAseq/qualityControl_cellRanger_v2.0_withReport.Rmd") or die;
         while (<REF>) {
             chomp;
             $_ =~ s/argv\[1\]/\"$F[0]\"/;
