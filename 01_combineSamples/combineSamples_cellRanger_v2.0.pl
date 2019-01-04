@@ -5,7 +5,7 @@ use Getopt::Long;
 use File::Path qw(make_path);
 
 #
-# mergeDatasets_10X.pl - Script to merge the scRNASeq datasets by 10X Genomics.
+# combineSamples_cellRanger_v2.0.pl - Script to merge the scRNASeq datasets by 10X Genomics.
 #
 # Author: Qingfei Pan (Qingfei.Pan<@>hotmail.com), SJCRH, USA
 # Version: 2.0 (Jan. 2, 2019)
