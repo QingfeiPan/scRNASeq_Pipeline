@@ -38,11 +38,11 @@ knitr::opts_knit$set(root.dir = outdir)
 
 ```{r echo=FALSE}
 # Count the genes identified in >=1 cell(s)
-cells_per_gene <- data.frame(ncells = rowSums(sign(as.matrix(data))))
+cells_per_gene <- data.frame(ncells = rowSums(sign(data)))
 preqc_genes <- sum(cells_per_gene$ncells > 0)
 
 # Count the cells with >=1 identified gene(s)
-genes_per_cell <- data.frame(ngenes = colSums(sign(as.matrix(data))))
+genes_per_cell <- data.frame(ngenes = colSums(sign(data)))
 preqc_cells <- sum(genes_per_cell$ngenes > 0)
 
 sample_info_c1 <- c("Sample ID", "Reference", "Input Directory", "Output Directory", "Raw Genes", "Raw Cells")
@@ -55,7 +55,7 @@ sample_info %>% kable("html") %>% kable_styling(bootstrap_options = "striped", f
 ### 1.1 Evaluate the quality of genes
 ```{r echo = FALSE}
 # Visulize the distribution of cell counts of each gene
-nCell_detected <- data.frame(ncells = rowSums(sign(as.matrix(data))))
+nCell_detected <- data.frame(ncells = rowSums(sign(data)))
 ggplot(data = nCell_detected, aes(log10(nCell_detected$ncells + 1))) + geom_histogram(bins = 100) + labs(x = "LOG10 (Cell counts + 1)", y = "Gene counts", title = "Distribution of Cell Counts among Genes") + theme(axis.text = element_text(size = 10), axis.title = element_text(size = 12, face = "bold"), title = element_text(size = 14, face = "bold"))
 ggsave(filename = "1_1_distribution_of_cell_counts_among_genes.pdf", scale = 1, width = 10, height = 10, units = "in", dpi = 300)
 ```
